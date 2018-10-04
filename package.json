@@ -5,6 +5,8 @@
   "main": "test-sqlite.js",
   "author": "Fifteen",
   "dependencies": {
+	"discord.io": "https://github.com/woor/discord.io/tarball/gateway_v6",
+	"request": "^2.88.0",
     "sqlite3": "^4.0.2"
   }
 }

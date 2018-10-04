@@ -87,6 +87,8 @@ MarkovichSQLiteBackend.prototype.record_words = function(words) {
 	}));
 }
 
+module.exports = MarkovichSQLiteBackend;
+
 /*
 let markov = new MarkovichSQLiteBackend('test_db2');
 markov.record_and_generate("One", 25)
