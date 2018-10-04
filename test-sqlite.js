@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3');
 
 function MarkovichSQLiteBackend(namespace_id) {
 	this.db = new sqlite3.Database(`./db/${namespace_id}.db`);
+	this.db.serialize();
 	
 	this.db.run(`
 		CREATE TABLE IF NOT EXISTS chain (
@@ -55,5 +56,28 @@ MarkovichSQLiteBackend.prototype.generate_from_sentence = function(sentence, spl
 	}));
 }
 
-let markov = new MarkovichSQLiteBackend('test_db');
-markov.generate_from_sentence("Hello world", "[, ]").then(console.log)
+MarkovichSQLiteBackend.prototype.record_sentence = function(sentence, split_pattern) {
+	let words = sentence.split(new RegExp(split_pattern));
+	let sql_param_list = Array.from(words, () => "(?)").join(', ')
+	
+	let record_sql = `
+		WITH
+			words(words) AS (VALUES ${sql_param_list}),
+			word_chain(link1, link2, n) AS (SELECT words, lead(words, 1) OVER (), 1 AS n FROM words)
+		INSERT INTO chain(link1, link2, n)
+			-- link2 would normally be null, but PK constraint disallows that
+			SELECT link1, COALESCE(link2, ' ') AS link2, SUM(n) AS n FROM word_chain GROUP BY link1, link2
+		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n -- Requires PG 9.5+ or SQLite 3.24.0`;
+
+	return new Promise((resolve, reject) => this.db.run(record_sql, words, function(err) {
+		if (err) reject(err);
+		resolve();
+	}));
+}
+
+let markov = new MarkovichSQLiteBackend('test_db2');
+markov.record_sentence("the world is DOOMED!", "[, ]")
+.then(() => markov.generate_from_sentence("Hello world", "[, ]"))
+.then(console.log)
+.catch(console.error);
+
