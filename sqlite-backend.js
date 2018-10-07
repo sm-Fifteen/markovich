@@ -18,7 +18,7 @@ function MarkovichSQLiteBackend(namespace_id) {
 }
 
 MarkovichSQLiteBackend.prototype.record_and_generate = function(sentence, max_length, split_pattern) {
-	if (!split_pattern) split_pattern  = "[, ]";
+	if (!split_pattern) split_pattern  = "[,\\s]+";
 	if (!sentence) return Promise.resolve([]);
 	
 	let words = sentence.split(new RegExp(split_pattern));
@@ -34,6 +34,8 @@ MarkovichSQLiteBackend.prototype.record_and_generate = function(sentence, max_le
 }
 
 MarkovichSQLiteBackend.prototype.generate_from_pair = function(seed1, seed2, max_length) {
+	console.log([seed1, seed2, max_length]);
+
 	if (!this.generate_statement) this.generate_statement = this.db.prepare(`
 		WITH RECURSIVE markov(last_word, current_word, random_const) AS (
 			-- Can't use subquery CTEs for random constants, since, in SQLite,
@@ -65,6 +67,7 @@ MarkovichSQLiteBackend.prototype.generate_from_pair = function(seed1, seed2, max
 	
 	return new Promise((resolve, reject) => this.generate_statement.all([seed1, seed2, max_length], function(err, rows) {
 		if (err) reject(err);
+		console.log(rows);
 		resolve(rows.map((row) => row.last_word));
 	}));
 }
