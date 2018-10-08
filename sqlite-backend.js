@@ -85,6 +85,7 @@ MarkovichSQLiteBackend.prototype.generate_from_pair = async function(seed1, seed
 	return new Promise((resolve, reject) => this.generate_statement.all([seed1, seed2, max_length], function(err, rows) {
 		if (err) reject(err);
 		console.log(rows);
+		if (!rows) return []; // Can happen sometimes on my Debian server? NOTHING works right on my Debian server.
 		resolve(rows.map((row) => row.last_word));
 	}));
 }
