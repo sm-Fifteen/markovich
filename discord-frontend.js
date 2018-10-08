@@ -16,12 +16,14 @@ var bot = new Discord.Client({
 bot.on('message', function (user, userID, channelID, message, evt) {
 	if (userID === bot.id) return;
 	
-	console.log(`=> "${message}"`);
 	const userHandle = `<@${bot.id}>`;
 	const maxReplyWords = (message.includes(userHandle)) ? 25 : 0;
 	
+	if (!bot.channels[channelID]) return; // TODO : Maybe handle DMChannels?
+
 	let server_id = bot.channels[channelID].guild_id;
 	let server_namespace = `discord_${server_id}`;
+	console.log(`(${server_id}) => "${message}"`);
 	
 	if (markov[server_namespace] === undefined) {
 		console.info(`Opening DB for ${server_namespace}`);
@@ -35,7 +37,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 	.catch(err => console.error('Error executing query', err.stack))
 	.then((msg) => {
 		if (!msg) return;
-		console.log(`<= "${msg}"`);
+		console.log(`(${server_id}) <= "${msg}"`);
 		
 		bot.sendMessage({
 				to: channelID,
