@@ -1,20 +1,28 @@
 const sqlite3 = require('sqlite3');
 
 function MarkovichSQLiteBackend(namespace_id) {
-	this.db = new sqlite3.Database(`./db/${namespace_id}.db`);
-	this.db.serialize();
-	
-	this.db.run(`
-		CREATE TABLE IF NOT EXISTS chain (
-			link1 text NOT NULL,
-			link2 text NOT NULL, -- Space is used as an end-of-sentence sentinel
-			n integer NOT NULL,
-			PRIMARY KEY (link1, link2), -- Primary Key requires not null anyway
-			CHECK (link1 <> ' ') 
-		);
-	`);
+	this.db = new Promise((resolve,reject) => {
+		db = new sqlite3.Database(`./db/${namespace_id}.db`, (err) => {
+			if (err) reject(err);
+			resolve();
+		});
+	}).then(() => {
+		db.serialize();
 
-	this.db.run("CREATE INDEX IF NOT EXISTS chain_link1_idx ON chain (link1);");
+		db.run(`
+			CREATE TABLE IF NOT EXISTS chain (
+				link1 text NOT NULL,
+				link2 text NOT NULL, -- Space is used as an end-of-sentence sentinel
+				n integer NOT NULL,
+				PRIMARY KEY (link1, link2), -- Primary Key requires not null anyway
+				CHECK (link1 <> ' ') 
+			);
+		`);
+
+		db.run("CREATE INDEX IF NOT EXISTS chain_link1_idx ON chain (link1);");
+
+		return db;
+	});
 }
 
 MarkovichSQLiteBackend.prototype.record_and_generate = function(sentence, max_length, split_pattern) {
@@ -33,10 +41,12 @@ MarkovichSQLiteBackend.prototype.record_and_generate = function(sentence, max_le
 	}).bind(this));
 }
 
-MarkovichSQLiteBackend.prototype.generate_from_pair = function(seed1, seed2, max_length) {
+MarkovichSQLiteBackend.prototype.generate_from_pair = async function(seed1, seed2, max_length) {
 	console.log([seed1, seed2, max_length]);
 
-	if (!this.generate_statement) this.generate_statement = this.db.prepare(`
+	let database = await this.db;
+
+	if (!this.generate_statement) this.generate_statement = database.prepare(`
 		WITH RECURSIVE markov(last_word, current_word, random_const) AS (
 			-- Can't use subquery CTEs for random constants, since, in SQLite,
 			-- they end up being evaluated once for the entire markov chain
@@ -72,8 +82,10 @@ MarkovichSQLiteBackend.prototype.generate_from_pair = function(seed1, seed2, max
 	}));
 }
 
-MarkovichSQLiteBackend.prototype.record_words = function(words) {
+MarkovichSQLiteBackend.prototype.record_words = async function(words) {
 	let sql_param_list = Array.from(words, () => "(?)").join(', ');
+
+	let database = await this.db;
 	
 	let record_sql = `
 		WITH
@@ -84,7 +96,7 @@ MarkovichSQLiteBackend.prototype.record_words = function(words) {
 			SELECT link1, COALESCE(link2, ' ') AS link2, SUM(n) AS n FROM word_chain GROUP BY link1, link2
 		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n -- Requires PG 9.5+ or SQLite 3.24.0`;
 
-	return new Promise((resolve, reject) => this.db.run(record_sql, words, function(err) {
+	return new Promise((resolve, reject) => database.run(record_sql, words, function(err) {
 		if (err) reject(err);
 		resolve();
 	}));
