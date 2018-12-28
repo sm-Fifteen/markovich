@@ -1,5 +1,6 @@
 import sqlite3
-import random, re
+import random
+from typing import Optional, Pattern
 
 class MarkovichSQLite:
 	def __init__(self, conn_string:str):
@@ -31,12 +32,13 @@ class MarkovichSQLite:
 		
 		self.conn.execute("CREATE INDEX IF NOT EXISTS chain_link1_idx ON chain (link1);")
 
-	def record_and_generate(self, input_string:str):
-		chopped_string = re.split(r'[,\s]+', input_string)
+	def record_and_generate(self, input_string:str, split_pattern: Pattern, word_limit: int) -> Optional[str]:
+		chopped_string = split_pattern.split(input_string)
 		self.record_words(chopped_string)
 
-		idx = random.randrange(len(chopped_string) - 2)
-		return self.generate_from_pair(chopped_string[idx], chopped_string[idx+1])
+		if len(chopped_string) < 2: return None
+		idx = random.randint(0, len(chopped_string) - 2)
+		return self.generate_from_pair(chopped_string[idx], chopped_string[idx+1], word_limit)
 
 	def record_words(self, chopped_string:list) -> None:
 		c = self.conn.cursor()
@@ -54,7 +56,9 @@ class MarkovichSQLite:
 		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n -- Requires PG 9.5+ or SQLite 3.24.0
 		""", chopped_string)
 
-	def generate_from_pair(self, input1:str, input2:str) -> str:
+	def generate_from_pair(self, input1:str, input2:str, word_limit: int) -> Optional[str]:
+		if word_limit < 0: return None
+		
 		c = self.conn.cursor()
 		
 		c.execute("""
@@ -76,8 +80,8 @@ class MarkovichSQLite:
 
 			FROM markov
 			WHERE current_word <> ' '
-		) SELECT last_word FROM markov LIMIT 50;
-		""", (input1, input2))
+		) SELECT last_word FROM markov LIMIT ?;
+		""", (input1, input2, word_limit))
 		
 		word_tuples = c.fetchall()
 		words = [word for (word,) in word_tuples]
