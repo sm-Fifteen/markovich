@@ -40,4 +40,12 @@ auth_data = None
 with open("./discord-auth.json", 'r') as auth_file:
 	auth_data = json.load(auth_file)
 
-client.run(auth_data['token'])
+# `client.run()` does not cleanup properly (at least, not on linux)
+try:
+	aio_loop = client.loop
+	aio_loop.run_until_complete(client.start(auth_data['token']))
+	aio_loop.run_forever()
+except KeyboardInterrupt:
+	print("Shutting down")
+finally:
+	aio_loop.run_until_complete(client.logout())
