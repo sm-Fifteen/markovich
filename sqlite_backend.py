@@ -3,10 +3,10 @@ import random
 from typing import Optional, Pattern
 
 class MarkovichSQLite:
-	def __init__(self, conn_string:str):
+	def __init__(self, database_name:str):
 		MarkovichSQLite.check_sqlite_version()
 		
-		self.conn = sqlite3.connect(conn_string)
+		self.conn = sqlite3.connect(f"./db/{database_name}.db")
 		self.init_db()
 		
 		# Alternative to using `ABS(random()) / CAST(0x7FFFFFFFFFFFFFFF AS real)`

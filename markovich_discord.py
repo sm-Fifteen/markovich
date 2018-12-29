@@ -18,34 +18,44 @@ async def on_ready():
 async def on_message(message: discord.Message):
 	if type(message.channel) is discord.DMChannel or message.author == client.user: return
 
+	print("{}@{} ==> {}".format(message.author, message.channel, message.content))
+
 	server_backend = get_server_backend(message.channel.guild.id)
 	reply_length = 50 if client.user.mentioned_in(message) else 0
 	
 	reply = server_backend.record_and_generate(message.content, split_pattern, reply_length)
 
 	if reply:
+		print("{} <== {}".format(message.channel, reply))
 		await message.channel.send(reply)
 
 def get_server_backend(server_id: int):
 	server_backend = server_databases.get(server_id)
 	
 	if server_backend is None:
-		server_backend = MarkovichSQLite(f"./db/discord_{server_id}.db")
+		db_name = "discord_{}".format(server_id)
+		print("Opening database \"{}\"".format(db_name))
+
+		server_backend = MarkovichSQLite(db_name)
 		server_databases[server_id] = server_backend
 
 	return server_backend
 
-auth_data = None
+def run_markovich():
+	auth_data = None
 
-with open("./discord-auth.json", 'r') as auth_file:
-	auth_data = json.load(auth_file)
+	with open("./discord-auth.json", 'r') as auth_file:
+		auth_data = json.load(auth_file)
 
-# `client.run()` does not cleanup properly (at least, not on linux)
-try:
-	aio_loop = client.loop
-	aio_loop.run_until_complete(client.start(auth_data['token']))
-	aio_loop.run_forever()
-except KeyboardInterrupt:
-	print("Shutting down")
-finally:
-	aio_loop.run_until_complete(client.logout())
+	# I could have replaced all of this with `client.run(auth_data['token'])`,
+	# but it does not cleanup properly (at least, not on linux)
+	try:
+		aio_loop = client.loop
+		aio_loop.run_until_complete(client.start(auth_data['token']))
+		aio_loop.run_forever()
+	except KeyboardInterrupt:
+		print("Shutting down")
+	finally:
+		aio_loop.run_until_complete(client.logout())
+
+run_markovich()
