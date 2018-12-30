@@ -1,6 +1,6 @@
 import pydle
 import re
-from sqlite_backend import MarkovichSQLite
+from backends import MarkovManager
 from typing import Dict
 
 split_pattern = re.compile(r'[,\s]+')
@@ -8,7 +8,7 @@ split_pattern = re.compile(r'[,\s]+')
 class MarkovichIRC(pydle.Client):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
-		self.test_backend = MarkovichSQLite('freenode_bottest')
+		self.backends = MarkovManager()
 
 	async def on_connect(self):
 		await self.join('#BotTest')
@@ -19,7 +19,8 @@ class MarkovichIRC(pydle.Client):
 		is_mentionned = self.nickname.lower() in message.lower()
 		reply_length = 50 if is_mentionned else 0
 		
-		reply = self.test_backend.record_and_generate(message, split_pattern, reply_length)
+		markov_chain = self.backends.get_markov(f"freenode_{target}")
+		reply = markov_chain.record_and_generate(message, split_pattern, reply_length)
 
 		if reply:
 			await self.message(target, reply)

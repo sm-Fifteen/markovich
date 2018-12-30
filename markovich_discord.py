@@ -1,14 +1,13 @@
-from sqlite_backend import MarkovichSQLite
 import re
 import json
 import discord
+from backends import MarkovManager
 from typing import Dict
-
-server_databases = {} # type: Dict[int, MarkovichSQLite]
 
 split_pattern = re.compile(r'[,\s]+')
 
 client = discord.Client()
+backends = MarkovManager()
 
 @client.event
 async def on_ready():
@@ -20,26 +19,14 @@ async def on_message(message: discord.Message):
 
 	print("{}@{} ==> {}".format(message.author, message.channel, message.content))
 
-	server_backend = get_server_backend(message.channel.guild.id)
+	markov_chain = backends.get_markov(f"discord_{message.channel.guild.id}")
 	reply_length = 50 if client.user.mentioned_in(message) else 0
 	
-	reply = server_backend.record_and_generate(message.content, split_pattern, reply_length)
+	reply = markov_chain.record_and_generate(message.content, split_pattern, reply_length)
 
 	if reply:
 		print("{} <== {}".format(message.channel, reply))
 		await message.channel.send(reply)
-
-def get_server_backend(server_id: int):
-	server_backend = server_databases.get(server_id)
-	
-	if server_backend is None:
-		db_name = "discord_{}".format(server_id)
-		print("Opening database \"{}\"".format(db_name))
-
-		server_backend = MarkovichSQLite(db_name)
-		server_databases[server_id] = server_backend
-
-	return server_backend
 
 def run_markovich():
 	auth_data = None

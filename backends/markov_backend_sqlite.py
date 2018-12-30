@@ -1,10 +1,11 @@
 import sqlite3
 import random
 from typing import Optional, Pattern
+from .markov_backend import MarkovBackend
 
-class MarkovichSQLite:
+class MarkovBackendSQLite(MarkovBackend):
 	def __init__(self, database_name:str):
-		MarkovichSQLite.check_sqlite_version()
+		MarkovBackendSQLite.check_sqlite_version()
 		
 		self.conn = sqlite3.connect(f"./db/{database_name}.db")
 		self.init_db()
