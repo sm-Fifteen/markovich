@@ -1,6 +1,7 @@
 import sqlite3
 import random
-from typing import Optional, Pattern
+import json
+from typing import Optional, Pattern, List
 from .markov_backend import MarkovBackend
 
 class MarkovBackendSQLite(MarkovBackend):
@@ -15,10 +16,24 @@ class MarkovBackendSQLite(MarkovBackend):
 
 	@staticmethod
 	def check_sqlite_version():
-		# ON CONFLICT requires SQLite 3.24.0 or PG 9.5+
+		# ON CONFLICT requires SQLite 3.24.0
 		# Windowing clauses require SQLite 3.25
-		(v_major, v_minor, _) = sqlite3.sqlite_version_info
-		assert v_major > 3 or (v_major == 3 and v_minor >= 25), "SQLite v3.25 or greater required"
+		# Windowing clauses inside correlated subqueries cause segfaults in SQLite 3.25 and 3.26.0
+		# Requires the json1 extension, but currently no way to check for that
+		current_version = sqlite3.sqlite_version_info
+		minimum_version = (3,26,1)
+
+		version_check = True # For an exact match
+
+		for (current, minimum) in zip(current_version, minimum_version):
+			if current > minimum:
+				version_check = True
+				break
+			elif current < minimum:
+				version_check = False
+				break
+		
+		assert version_check, "SQLite {}.{}.{} or greater required (Running on SQLite {}.{}.{})".format(*minimum_version, *current_version)
 
 	def init_db(self) -> None:
 		self.conn.execute("""
@@ -41,21 +56,22 @@ class MarkovBackendSQLite(MarkovBackend):
 		idx = random.randint(0, len(chopped_string) - 2)
 		return self.generate_from_pair(chopped_string[idx], chopped_string[idx+1], word_limit)
 
-	def record_words(self, chopped_string:list) -> None:
+	def record_words(self, chopped_string:List[str]) -> None:
 		c = self.conn.cursor()
 		
-		placeholders = ['(?)'] * len(chopped_string)
-		placeholders_str = ','.join(placeholders)
+		# Passing a json text array instead of creating a query with an arbitrary amount of parmeters each time
+		# SQLite, unlike pgSQL, doesn't have a function to split strings into tables
+		json_encoded = json.dumps(chopped_string)
 
-		c.execute(f"""
+		c.execute("""
 		WITH
-			words(words) AS (VALUES {placeholders_str}),
+			words(words) AS (SELECT value FROM json_each(?)),
 			word_chain(link1, link2, n) AS (SELECT words, lead(words, 1) OVER (), 1 AS n FROM words)
 		INSERT INTO chain(link1, link2, n)
 			-- link2 would normally be null, but PK constraint disallows that
 			SELECT link1, COALESCE(link2, ' ') AS link2, SUM(n) AS n FROM word_chain GROUP BY link1, link2
-		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n -- Requires PG 9.5+ or SQLite 3.24.0
-		""", chopped_string)
+		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n
+		""", (json_encoded,))
 
 	def generate_from_pair(self, input1:str, input2:str, word_limit: int) -> Optional[str]:
 		if word_limit < 0: return None

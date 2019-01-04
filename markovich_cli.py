@@ -1,7 +1,7 @@
-from sqlite_backend import MarkovichSQLite
+from backends.markov_backend_sqlite import MarkovBackendSQLite
 import re
 
-backend = MarkovichSQLite("./db/test_db2.db")
+backend = MarkovBackendSQLite("test_db2")
 split_pattern = re.compile(r'[,\s]+')
 
 while True:
