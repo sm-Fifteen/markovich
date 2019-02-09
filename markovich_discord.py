@@ -28,21 +28,20 @@ async def on_message(message: discord.Message):
 		print("{} <== {}".format(message.channel, reply))
 		await message.channel.send(reply)
 
-def run_markovich():
-	auth_data = None
+if __name__ == "__main__":
+	with open("./config.json", 'r') as config_file:
+		config = json.load(config_file)
 
-	with open("./discord-auth.json", 'r') as auth_file:
-		auth_data = json.load(auth_file)
-
-	# I could have replaced all of this with `client.run(auth_data['token'])`,
-	# but it does not cleanup properly (at least, not on linux)
-	try:
-		aio_loop = client.loop
-		aio_loop.run_until_complete(client.start(auth_data['token']))
-		aio_loop.run_forever()
-	except KeyboardInterrupt:
-		print("Shutting down")
-	finally:
-		aio_loop.run_until_complete(client.logout())
-
-run_markovich()
+	if 'discord' in config.keys():
+		# I could have replaced all of this with `client.run(auth_data['token'])`,
+		# but it does not cleanup properly (at least, not on linux)
+		try:
+			aio_loop = client.loop
+			aio_loop.run_until_complete(client.start(config['discord']['token']))
+			aio_loop.run_forever()
+		except KeyboardInterrupt:
+			print("Shutting down")
+		finally:
+			aio_loop.run_until_complete(client.logout())
+	else:
+		print("No configuration data for discord")

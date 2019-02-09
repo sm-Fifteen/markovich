@@ -1,0 +1,17 @@
+{
+	"irc": [
+		{
+			"server": {
+				"hostname": "irc.freenode.net",
+				"port": 6697,
+				"tls": true,
+				"password": null,
+				"channels": ["#BotTest"]
+			},
+			"username": "Markovich"
+		}
+	],
+	"discord": {
+		"token": null
+	}
+}

@@ -1,5 +1,5 @@
 *.db
-discord-auth.json
+config.json
 .vscode
 __pycache__
 .mypy_cache
