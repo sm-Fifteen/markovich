@@ -1,14 +1,20 @@
 import sqlite3
 import random
 import json
+from pathlib import Path
 from typing import Optional, Pattern, List
 from .markov_backend import MarkovBackend
 
+sqlite_db_directory = (Path(__file__)).parent / '..' / 'db'
+
 class MarkovBackendSQLite(MarkovBackend):
-	def __init__(self, database_name:str):
+	def __init__(self, database_path:Path):
 		MarkovBackendSQLite.check_sqlite_version()
 		
-		self.conn = sqlite3.connect(f"./db/{database_name}.db")
+		file_check = database_path.is_file() or (database_path.parent.is_dir() and not database_path.exists())
+		assert file_check, "Cannot open or create {}".format(database_path)
+
+		self.conn = sqlite3.connect(database_path.__fspath__())
 		self.init_db()
 		
 		# Alternative to using `ABS(random()) / CAST(0x7FFFFFFFFFFFFFFF AS real)`
@@ -21,7 +27,7 @@ class MarkovBackendSQLite(MarkovBackend):
 		# Windowing clauses inside correlated subqueries cause segfaults in SQLite 3.25 and 3.26.0
 		# Requires the json1 extension, but currently no way to check for that
 		current_version = sqlite3.sqlite_version_info
-		minimum_version = (3,26,1)
+		minimum_version = (3,27,0)
 
 		version_check = True # For an exact match
 
