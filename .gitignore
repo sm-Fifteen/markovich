@@ -3,5 +3,4 @@ discord-auth.json
 .vscode
 __pycache__
 .mypy_cache
-node_modules
 .pyenv
