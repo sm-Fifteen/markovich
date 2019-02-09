@@ -1,8 +1,7 @@
 import pydle
 import re
-import json
-from backends import MarkovManager
-from typing import Dict
+from .backends import MarkovManager
+from typing import Dict, List
 
 split_pattern = re.compile(r'[,\s]+')
 
@@ -27,11 +26,8 @@ class MarkovichIRC(pydle.Client):
 		if reply:
 			await self.message(target, reply)
 
-if __name__ == "__main__":
-	with open("./config.json", 'r') as config_file:
-		config = json.load(config_file)
-
-	if 'irc' in config.keys():
-		for irc_config in config['irc']:
-			client = MarkovichIRC(irc_config['username'])
-			client.run(**irc_config['server'])
+def run_markovich_irc(irc_configs: List[Dict], eventloop = None):
+	for irc_config in irc_configs:
+		client = MarkovichIRC(irc_config['username'], eventloop=eventloop)
+		client.eventloop.run_until_complete(client.connect(**irc_config['server']))
+		

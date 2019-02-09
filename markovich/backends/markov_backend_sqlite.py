@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, Pattern, List
 from .markov_backend import MarkovBackend
 
-sqlite_db_directory = (Path(__file__)).parent / '..' / 'db'
+sqlite_db_directory = Path("./db")
 
 class MarkovBackendSQLite(MarkovBackend):
 	def __init__(self, database_path:Path):
