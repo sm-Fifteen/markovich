@@ -1,0 +1,6 @@
+/db
+*.db
+.vscode
+__pycache__
+.mypy_cache
+.pyenv

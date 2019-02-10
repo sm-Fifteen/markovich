@@ -1,0 +1,18 @@
+version: "3"
+services:
+  markovich:
+    build: .
+    volumes:
+      - /home/user/git/markovich/config.json:/opt/config.json
+      - /home/user/git/markovich/db:/opt/db
+    ports:
+      - 6697:6697
+      - 6667:6667
+    #networks:
+    #  - znc-network
+    restart: unless-stopped
+
+# docker network create znc-network
+networks:
+  znc-network:
+    external: true
