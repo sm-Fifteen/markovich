@@ -58,9 +58,11 @@ class MarkovBackendSQLite(MarkovBackend):
 		chopped_string = split_pattern.split(input_string)
 		self.record_words(chopped_string)
 
-		if len(chopped_string) < 2: return None
-		idx = random.randint(0, len(chopped_string) - 2)
-		return self.generate_from_pair(chopped_string[idx], chopped_string[idx+1], word_limit)
+		try:
+			starting_word = random.choice(chopped_string)
+			return self.generate_from_pair(starting_word, word_limit)
+		except IndexError:
+			return None
 
 	def record_words(self, chopped_string:List[str]) -> None:
 		c = self.conn.cursor()
@@ -79,18 +81,16 @@ class MarkovBackendSQLite(MarkovBackend):
 		ON CONFLICT (link1, link2) DO UPDATE SET n = chain.n + EXCLUDED.n
 		""", (json_encoded,))
 
-	def generate_from_pair(self, input1:str, input2:str, word_limit: int) -> Optional[str]:
+	def generate_from_pair(self, starting_word:str, word_limit: int) -> Optional[str]:
 		if word_limit < 0: return None
 		
 		c = self.conn.cursor()
 		
 		c.execute("""
 		WITH RECURSIVE markov(last_word, current_word, random_const) AS (
-			VALUES(?, ?, random_real())
+			VALUES(NULL, ?, random_real())
 		UNION ALL
 			SELECT markov.current_word, (
-				-- Weighted word generation
-				-- Loosely based on https://stackoverflow.com/a/13040717
 				SELECT link2 FROM (
 					SELECT link1, link2, n,
 					SUM(n) OVER (PARTITION BY link1 ROWS UNBOUNDED PRECEDING) AS rank,
@@ -103,8 +103,10 @@ class MarkovBackendSQLite(MarkovBackend):
 
 			FROM markov
 			WHERE current_word <> ' '
-		) SELECT last_word FROM markov LIMIT ?;
-		""", (input1, input2, word_limit))
+		)
+		-- Initial pair (NULL, starting_word) needs to be removed
+		SELECT last_word FROM markov WHERE last_word IS NOT NULL LIMIT ?;
+		""", (starting_word, word_limit))
 		
 		word_tuples = c.fetchall()
 		words = [word for (word,) in word_tuples]
