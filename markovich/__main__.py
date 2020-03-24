@@ -1,5 +1,6 @@
 import sys, os
 import json
+import logging
 from typing import List, Callable
 from asyncio import Future, get_event_loop
 
@@ -22,10 +23,15 @@ def run_with_config(config):
 
 		aio_loop.run_forever()
 	except KeyboardInterrupt:
-		print("Shutting down")
+		logging.info("Shutting down")
 	finally:
 		for cleanup in cleanup_functions:
 			aio_loop.run_until_complete(cleanup())
+
+def run_without_config():
+	aio_loop = get_event_loop()
+	run_markovich_cli(eventloop=aio_loop)
+	aio_loop.run_forever()
 
 if len(sys.argv) > 1:
 	config_path = sys.argv[1]
@@ -35,5 +41,5 @@ if len(sys.argv) > 1:
 	
 	run_with_config(config)
 else:
-	print("Called with no configuration file, launching in test mode")
-	run_markovich_cli()
+	logging.warning("Called with no configuration file, launching in test mode")
+	run_without_config()

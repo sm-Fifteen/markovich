@@ -18,10 +18,10 @@ class MarkovichIRC(pydle.Client):
 		if source == self.nickname: return
 
 		is_mentionned = self.nickname.lower() in message.lower()
-		reply_length = 50 if is_mentionned else 0
-		
-		markov_chain = self.backends.get_markov(f"{self.server_tag}_{target}")
-		reply = markov_chain.record_and_generate(message, split_pattern, reply_length)
+
+		async with self.backends.get_markov(f"{self.server_tag}_{target}") as markov_chain:
+			reply_length = 50 if is_mentionned else 0
+			reply = markov_chain.record_and_generate(message, split_pattern, reply_length)
 
 		if reply:
 			await self.message(target, reply)
@@ -30,4 +30,3 @@ def run_markovich_irc(irc_configs: List[Dict], eventloop = None):
 	for irc_config in irc_configs:
 		client = MarkovichIRC(irc_config['username'], eventloop=eventloop)
 		client.eventloop.run_until_complete(client.connect(**irc_config['server']))
-		
