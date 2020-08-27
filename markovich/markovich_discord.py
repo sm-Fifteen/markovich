@@ -24,7 +24,9 @@ class MarkovichDiscord(discord.Client):
 			reply = await markov_chain.record_and_generate(message.content, split_pattern, reply_length)
 
 		if reply:
-			await message.channel.send(reply)
+			# Any users not in that list will be tagged but not pinged
+			allowed_mentions = discord.AllowedMentions(everyone=False, roles=False, users=list({message.author, self.user, *message.mentions}))
+			await message.channel.send(reply, allowed_mentions=allowed_mentions)
 
 
 def run_markovich_discord(discord_config: Dict):
