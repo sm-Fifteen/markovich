@@ -26,7 +26,11 @@ class MarkovichIRC(pydle.Client):
 		if reply:
 			await self.message(target, reply)
 
-def run_markovich_irc(irc_configs: List[Dict], eventloop = None):
+def run_markovich_irc(irc_configs: List[Dict]):
+	pool = pydle.ClientPool()
+
 	for irc_config in irc_configs:
-		client = MarkovichIRC(irc_config['username'], eventloop=eventloop)
-		client.eventloop.run_until_complete(client.connect(**irc_config['server']))
+		client = MarkovichIRC(irc_config['username'])
+		pool.connect(client, **irc_config['server'])
+
+	pool.handle_forever()
