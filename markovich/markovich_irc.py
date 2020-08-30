@@ -21,7 +21,7 @@ class MarkovichIRC(pydle.Client):
 
 		async with self.backends.get_markov(f"{self.server_tag}_{target}") as markov_chain:
 			reply_length = 50 if is_mentionned else 0
-			reply = markov_chain.record_and_generate(message, split_pattern, reply_length)
+			reply = await markov_chain.record_and_generate(message, split_pattern, reply_length)
 
 		if reply:
 			await self.message(target, reply)
