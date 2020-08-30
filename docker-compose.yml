@@ -1,14 +1,15 @@
-version: '3'
+version: "3"
 services:
-  markovich:
+  markovich-irc:
     build: .
     volumes:
-      - '/home/user/git/markovich/config.json:/opt/config.json'
-      - '/home/user/git/markovich/db:/opt/db'
-    ports:
-      - '6697:6697'
-      - '6667:6667'
+      - /home/user/git/markovich/config-irc.json:/opt/config.json
+      - /home/user/git/markovich/db:/opt/db
     restart: unless-stopped
-networks:
-  znc-network:
-    external: true
+
+  markovich-discord:
+    build: .
+    volumes:
+      - /home/user/git/markovich/config-discord.json:/opt/config.json
+      - /home/user/git/markovich/db:/opt/db
+    restart: unless-stopped
