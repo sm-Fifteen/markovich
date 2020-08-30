@@ -1,31 +1,26 @@
 import sys, os
 import json
-from typing import List, Callable
-from asyncio import Future, get_event_loop
+import logging
 
 from .markovich_discord import run_markovich_discord
 from .markovich_irc import run_markovich_irc
 from .markovich_cli import run_markovich_cli
 
 def run_with_config(config):
-	cleanup_functions = [] #type: List[Callable[[], Future]]
-	aio_loop = get_event_loop()
+	if 'irc' in config and 'discord' in config:
+		logging.error("Cannot run in both Discord and IRC mode at the same time.")
+		sys.exit(1)
+	
+	if 'irc' in config:
+		run_markovich_irc(config['irc'])
+	elif 'discord' in config:
+		run_markovich_discord(config['discord'])
+	else:
+		logging.error("No known configurations in the specified config file.")
+		sys.exit(1)
 
-	try:
-		if 'irc' in config:
-			cleanup_fn = run_markovich_irc(config['irc'], eventloop=aio_loop)
-			#cleanup_functions.append(cleanup_fn)
-
-		if 'discord' in config:
-			cleanup_fn = run_markovich_discord(config['discord'], eventloop=aio_loop)
-			cleanup_functions.append(cleanup_fn)
-
-		aio_loop.run_forever()
-	except KeyboardInterrupt:
-		print("Shutting down")
-	finally:
-		for cleanup in cleanup_functions:
-			aio_loop.run_until_complete(cleanup())
+def run_without_config():
+	run_markovich_cli()
 
 if len(sys.argv) > 1:
 	config_path = sys.argv[1]
@@ -35,5 +30,5 @@ if len(sys.argv) > 1:
 	
 	run_with_config(config)
 else:
-	print("Called with no configuration file, launching in test mode")
-	run_markovich_cli()
+	logging.warning("Called with no configuration file, launching in test mode")
+	run_without_config()
